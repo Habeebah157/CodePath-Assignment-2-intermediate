@@ -1,41 +1,60 @@
 package com.example.wishlist
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.wishlist.databinding.ActivityMainBinding
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    var lists: MutableList<Wishlist> = mutableListOf()
+    private val nutritionlists= mutableListOf<Fitbitentity>()
+    private lateinit var nutritionRv: RecyclerView
+    private lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val button = findViewById<Button>(R.id.button)
-        val itemName = findViewById<EditText>(R.id.iteminput)
-        val itemPrice = findViewById<EditText>(R.id.price)
-        val itemURL = findViewById<EditText>(R.id.url)
-        val Rv = findViewById<RecyclerView>(R.id.recycler)
+        binding= ActivityMainBinding.inflate(layoutInflater)
+        val view = binding.root
+        setContentView(view)
 
-        var adapter = Wishlist_adapter(lists)
-        Rv.adapter = adapter
-        Rv.layoutManager = LinearLayoutManager(this)
-
-        button.setOnClickListener{
-            val name = itemName.text.toString()
-            val price = itemPrice.text.toString()
-            val url = itemURL.text.toString()
-            val newItem = Wishlist(name, price, url)
-
-            lists.add(newItem)
-            adapter.notifyDataSetChanged()
-
+        nutritionRv = findViewById(R.id.fitbitRv)
+        val nutritionAdapter = NutritionAdapter(this, nutritionlists)
+        nutritionRv.adapter = nutritionAdapter
+        lifecycleScope.launch{
+            (application as MyApplication).db.FitBitDao().getAll().collect{databaseList->
+                databaseList.map{ mappedList ->
+                    nutritionlists.addAll(listOf(mappedList))
+                    nutritionAdapter.notifyDataSetChanged()
+                }
+            }
         }
+        nutritionRv.layoutManager = LinearLayoutManager(this).also {
+            val dividerItemDecoration = DividerItemDecoration(this, it.orientation)
+            nutritionRv.addItemDecoration(dividerItemDecoration)
+        }
+
+
+
+        val add = findViewById<Button>(R.id.entrybutton)
+        add.setOnClickListener{
+            val intent = Intent(this@MainActivity, DetailActivity::class.java)
+            startActivity(intent)
+        }
+        nutritionAdapter.setOnItemClickListener(object: NutritionAdapter.OnItemClickListener{
+            override fun onItemClick(position: Int){
+                Toast.makeText(this@MainActivity,"Item removed at position $position", Toast.LENGTH_LONG).show()
+                nutritionlists.removeAt(position)
+                nutritionAdapter.notifyItemRemoved(position)
+            }
+        })
 
 
     }
